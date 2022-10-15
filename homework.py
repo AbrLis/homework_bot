@@ -117,7 +117,7 @@ def main_loop(bot, current_timestamp) -> None:
                     current_timestamp = response.get("current_date")
         except Exception as e:
             logging.error(f"Ошибка в основном цикле: {e}")
-            send_message(bot, f"Ошибка: {e}")
+            send_message(bot, f"```Ошибка: {e}```")
         time.sleep(RETRY_TIME)
 
 
