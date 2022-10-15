@@ -93,8 +93,7 @@ def parse_status(homework) -> str:
         comment = homework.get("reviewer_comment") or "Data not found"
         return (
             f"Изменился статус проверки работы "
-            f'"{homework_name}". {verdict}/n'
-            f'Комментарий ревьюера: "{comment}"'
+            f'"{homework_name}". {verdict}'
         )
     else:
         logging.debug("Статус не изменился")
