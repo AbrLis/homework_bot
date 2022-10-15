@@ -90,7 +90,6 @@ def parse_status(homework) -> str:
     if homework_status != last_homework_status.get(homework_name):
         verdict = HOMEWORK_STATUSES[homework_status]
         last_homework_status[homework_name] = homework_status
-        comment = homework.get("reviewer_comment") or "Data not found"
         return (
             f"Изменился статус проверки работы "
             f'"{homework_name}". {verdict}'
