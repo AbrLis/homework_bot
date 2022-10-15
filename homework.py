@@ -26,7 +26,7 @@ HOMEWORK_STATUSES = {
 STATUS_ERROR = {
     "send_error": "Ошибка при отправке сообщения: ",
     "API": "Ошибка при получении ответа API: ",
-    "API_not_correct": "Некорректный ответ API: ",
+    "API_not_correct": "Некорректный ответ API",
     "KeyError": "Некорректный ключ в ответе API",
     "status": "Неопознанный статус домашней работы",
 }
@@ -37,7 +37,9 @@ last_homework_status = {}
 def send_message(bot, message) -> None:
     """Отправка сообщения в Telegram."""
     try:
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+        bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID, text=message, mode="MarkdownV2"
+        )
     except telegram_error.NetworkError as e:
         logging.error(f"{STATUS_ERROR['send_error']}{e}")
     else:
@@ -65,7 +67,7 @@ def check_response(response) -> list:
         logging.error(error)
         raise TypeError(error)
     homework = response.get("homeworks")
-    if not homework or not isinstance(homework, list):
+    if homework is None or not isinstance(homework, list):
         logging.error(error)
         raise TypeError(error)
 
@@ -122,7 +124,7 @@ def main_loop(bot, current_timestamp) -> None:
 def main() -> None:
     """Основная логика работы бота."""
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s, %(levelname)s, %(message)s, %(name)s",
     )
 
@@ -138,6 +140,7 @@ def main() -> None:
 
     current_timestamp = int(time.time())
 
+    logging.info("main_loop started")
     main_loop(bot, current_timestamp)
 
 
