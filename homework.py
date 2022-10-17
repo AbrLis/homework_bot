@@ -33,6 +33,14 @@ STATUS_ERROR = {
 
 last_homework_status = {}
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter("%(asctime)s, %(levelname)s, %(message)s, %(name)s")
+)
+logger.addHandler(handler)
+
 
 def send_message(bot, message) -> None:
     """Отправка сообщения в Telegram."""
@@ -41,9 +49,9 @@ def send_message(bot, message) -> None:
             chat_id=TELEGRAM_CHAT_ID, text=message, mode="MarkdownV2"
         )
     except telegram_error.NetworkError as e:
-        logging.error(f"{STATUS_ERROR['send_error']}{e}")
+        logger.error(f"{STATUS_ERROR['send_error']}{e}")
     else:
-        logging.info(f"Сообщение отправлено: {message}")
+        logger.info(f"Сообщение отправлено: {message}")
 
 
 def get_api_answer(current_timestamp) -> dict:
@@ -55,7 +63,7 @@ def get_api_answer(current_timestamp) -> dict:
         error = (
             f'{STATUS_ERROR["API"]}{response.status_code} {response.reason}'
         )
-        logging.error(error)
+        logger.error(error)
         raise requests.exceptions.HTTPError(error)
     return response.json()
 
@@ -64,11 +72,11 @@ def check_response(response) -> list:
     """Проверка ответа API на наличие новых домашних работ."""
     error = STATUS_ERROR["API_not_correct"]
     if not isinstance(response, dict):
-        logging.error(error)
+        logger.error(error)
         raise TypeError(error)
     homework = response.get("homeworks")
     if homework is None or not isinstance(homework, list):
-        logging.error(error)
+        logger.error(error)
         raise TypeError(error)
 
     return homework
@@ -80,11 +88,11 @@ def parse_status(homework) -> str:
     homework_status = homework.get("status")
     if not all([homework_name, homework_status]):
         error_key = STATUS_ERROR["KeyError"]
-        logging.error(error_key)
+        logger.error(error_key)
         raise KeyError(error_key)
     if homework_status not in HOMEWORK_STATUSES:
         error_status = STATUS_ERROR["status"]
-        logging.error(error_status)
+        logger.error(error_status)
         raise KeyError(error_status)
 
     if homework_status != last_homework_status.get(homework_name):
@@ -95,7 +103,7 @@ def parse_status(homework) -> str:
             f'"{homework_name}". {verdict}'
         )
     else:
-        logging.debug("Статус не изменился")
+        logger.debug("Статус не изменился")
     return ""
 
 
@@ -116,31 +124,26 @@ def main_loop(bot, current_timestamp) -> None:
                     send_message(bot, message)
                     current_timestamp = response.get("current_date")
         except Exception as e:
-            logging.error(f"Ошибка в основном цикле: {e}")
+            logger.error(f"Ошибка в основном цикле: {e}")
             send_message(bot, f"```Ошибка: {e}```")
         time.sleep(RETRY_TIME)
 
 
 def main() -> None:
-    """Основная логика работы бота."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s, %(levelname)s, %(message)s, %(name)s",
-    )
-
+    """Основная функция программы."""
     if not check_tokens():
-        logging.critical("Токены не найдены, работа бота невозможна")
+        logger.critical("Токены не найдены, работа бота невозможна")
         return
 
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
     except telegram_error.InvalidToken as e:
-        logging.critical(f"Некорректный токен, работа прервана: {e}")
+        logger.critical(f"Некорректный токен, работа прервана: {e}")
         return
 
     current_timestamp = int(time.time())
 
-    logging.info("main_loop started")
+    logger.info("main_loop started")
     main_loop(bot, current_timestamp)
 
 
