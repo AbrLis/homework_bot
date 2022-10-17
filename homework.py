@@ -69,7 +69,8 @@ def get_api_answer(current_timestamp) -> dict:
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     if response.status_code != 200:
         error = (
-            f'{STATUS_ERROR["API"]}{response.status_code} {response.reason}'
+            f'{STATUS_ERROR["API"]} Ожидался ответ со статусом 200,\n'
+            f"получено: {response.status_code} {response.reason}"
         )
         logger.error(error)
         raise BotException(error)
@@ -103,7 +104,7 @@ def parse_status(homework) -> str:
     """Получение статуса домашней работы."""
     homework_name = homework.get("homework_name")
     homework_status = homework.get("status")
-    if not all([homework_name, homework_status]):
+    if not all((homework_name, homework_status)):
         error_key = STATUS_ERROR["KeyError"]
         logger.error(error_key)
         raise BotKeyError(error_key)
@@ -126,7 +127,7 @@ def parse_status(homework) -> str:
 
 def check_tokens() -> bool:
     """Проверка наличия токенов."""
-    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def main_loop(bot, current_timestamp) -> None:
@@ -142,7 +143,8 @@ def main_loop(bot, current_timestamp) -> None:
         except Exception as e:
             logger.error(f"Ошибка в основном цикле: {e}")
             send_message(bot, f"Ошибка: {e}")
-        time.sleep(RETRY_TIME)
+        finally:
+            time.sleep(RETRY_TIME)
 
 
 def main() -> None:
