@@ -1,11 +1,13 @@
 import logging
 import os
 import time
-import requests
 
+import requests
 from dotenv import load_dotenv
 from telegram import Bot
 from telegram import error as telegram_error
+
+from exceptions import BotException, BotKeyError, BotTypeError
 
 load_dotenv()
 
@@ -29,6 +31,7 @@ STATUS_ERROR = {
     "API_not_correct": "Некорректный ответ API",
     "KeyError": "Некорректный ключ в ответе API",
     "status": "Неопознанный статус домашней работы",
+    "JSON_error": "Ошибка при преобразовании ответа API в JSON",
 }
 
 last_homework_status = {}
@@ -42,30 +45,44 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
-def send_message(bot, message) -> None:
+def send_message(bot, message) -> bool:
     """Отправка сообщения в Telegram."""
     try:
+        logger.info("Попытка отправки сообщения")
         bot.send_message(
-            chat_id=TELEGRAM_CHAT_ID, text=message, mode="MarkdownV2"
+            chat_id=TELEGRAM_CHAT_ID,
+            text=message,
         )
-    except telegram_error.NetworkError as e:
-        logger.error(f"{STATUS_ERROR['send_error']}{e}")
+    except Exception as e:
+        logger.error(f"{STATUS_ERROR['send_error']}: {e}")
+        return False
     else:
         logger.info(f"Сообщение отправлено: {message}")
+        return True
 
 
 def get_api_answer(current_timestamp) -> dict:
     """Получение ответа API."""
     timestamp = current_timestamp or int(time.time())
     params = {"from_date": timestamp}
+    logger.debug("Попытка получения ответа API")
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     if response.status_code != 200:
         error = (
             f'{STATUS_ERROR["API"]}{response.status_code} {response.reason}'
         )
         logger.error(error)
-        raise requests.exceptions.HTTPError(error)
-    return response.json()
+        raise BotException(error)
+    logger.debug("Ответ API получен")
+    try:
+        logger.debug("Попытка преобразования ответа API в JSON")
+        response = response.json()
+    except Exception:
+        error_message = f"{STATUS_ERROR['JSON_error']}: {response.text}"
+        logger.error(error_message)
+        raise BotException(error_message)
+    logger.debug("Ответ API преобразован в JSON")
+    return response
 
 
 def check_response(response) -> list:
@@ -73,11 +90,11 @@ def check_response(response) -> list:
     error = STATUS_ERROR["API_not_correct"]
     if not isinstance(response, dict):
         logger.error(error)
-        raise TypeError(error)
+        raise BotTypeError(error)
     homework = response.get("homeworks")
     if homework is None or not isinstance(homework, list):
         logger.error(error)
-        raise TypeError(error)
+        raise BotKeyError(error)
 
     return homework
 
@@ -89,11 +106,11 @@ def parse_status(homework) -> str:
     if not all([homework_name, homework_status]):
         error_key = STATUS_ERROR["KeyError"]
         logger.error(error_key)
-        raise KeyError(error_key)
+        raise BotKeyError(error_key)
     if homework_status not in HOMEWORK_STATUSES:
         error_status = STATUS_ERROR["status"]
         logger.error(error_status)
-        raise KeyError(error_status)
+        raise BotException(error_status)
 
     if homework_status != last_homework_status.get(homework_name):
         verdict = HOMEWORK_STATUSES[homework_status]
@@ -120,26 +137,28 @@ def main_loop(bot, current_timestamp) -> None:
             homeworks = check_response(response)
             for homework in homeworks:
                 message = parse_status(homework)
-                if message != "":
-                    send_message(bot, message)
+                if message and send_message(bot, message):
                     current_timestamp = response.get("current_date")
         except Exception as e:
             logger.error(f"Ошибка в основном цикле: {e}")
-            send_message(bot, f"```Ошибка: {e}```")
+            send_message(bot, f"Ошибка: {e}")
         time.sleep(RETRY_TIME)
 
 
 def main() -> None:
-    """Основная функция программы."""
+    """Инициализация бота и запуск основного цикла."""
     if not check_tokens():
         logger.critical("Токены не найдены, работа бота невозможна")
         return
 
     try:
+        logger.info("Попытка запуска бота")
         bot = Bot(token=TELEGRAM_TOKEN)
     except telegram_error.InvalidToken as e:
         logger.critical(f"Некорректный токен, работа прервана: {e}")
         return
+    else:
+        logger.info("Бот запущен")
 
     current_timestamp = int(time.time())
 
