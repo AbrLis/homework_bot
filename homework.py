@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(
-    logging.Formatter("%(asctime)s, %(levelname)s, %(message)s, %(name)s")
+    logging.Formatter("%(asctime)s, %(name)s, %(levelname)s, %(message)s")
 )
 logger.addHandler(handler)
 
@@ -65,14 +65,14 @@ def get_api_answer(current_timestamp) -> dict:
     """Получение ответа API."""
     timestamp = current_timestamp or int(time.time())
     params = {"from_date": timestamp}
-    logger.info("Попытка получения ответа API")
+    logger.debug("Попытка получения ответа API")
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     if response.status_code != 200:
         raise BotException(
             f'{STATUS_ERROR["API"]} Ожидался ответ со статусом 200,\n'
             f"получено: {response.status_code} {response.reason}"
         )
-    logger.info("Ответ API получен")
+    logger.debug("Ответ API получен")
     try:
         logger.debug("Попытка преобразования ответа API в JSON")
         response = response.json()
@@ -127,6 +127,7 @@ def main_loop(bot, current_timestamp) -> None:
     """Основной цикл программы."""
     while True:
         try:
+            logger.info("--Цикл--")
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             for homework in homeworks:
