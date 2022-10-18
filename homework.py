@@ -66,7 +66,9 @@ def get_api_answer(current_timestamp) -> dict:
     timestamp = current_timestamp or int(time.time())
     params = {"from_date": timestamp}
     logger.debug("Попытка получения ответа API")
-    response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    response = requests.get(
+        ENDPOINT, headers=HEADERS, params=params, timeout=5
+    )
     if response.status_code != 200:
         raise BotException(
             f'{STATUS_ERROR["API"]} Ожидался ответ со статусом 200,\n'
