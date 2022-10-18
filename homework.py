@@ -74,11 +74,11 @@ def get_api_answer(current_timestamp) -> dict:
         )
     logger.info("Ответ API получен")
     try:
-        logger.debug("Попытка преобразования ответа API в JSON")
+        logger.info("Попытка преобразования ответа API в JSON")
         response = response.json()
     except Exception:
         raise BotException(f"{STATUS_ERROR['JSON_error']}: {response.text}")
-    logger.debug("Ответ API преобразован в JSON")
+    logger.info("Ответ API преобразован в JSON")
     return response
 
 
