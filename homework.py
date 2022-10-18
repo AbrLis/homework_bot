@@ -68,20 +68,16 @@ def get_api_answer(current_timestamp) -> dict:
     logger.debug("Попытка получения ответа API")
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     if response.status_code != 200:
-        error = (
+        raise BotException(
             f'{STATUS_ERROR["API"]} Ожидался ответ со статусом 200,\n'
             f"получено: {response.status_code} {response.reason}"
         )
-        logger.error(error)
-        raise BotException(error)
     logger.debug("Ответ API получен")
     try:
         logger.debug("Попытка преобразования ответа API в JSON")
         response = response.json()
     except Exception:
-        error_message = f"{STATUS_ERROR['JSON_error']}: {response.text}"
-        logger.error(error_message)
-        raise BotException(error_message)
+        raise BotException(f"{STATUS_ERROR['JSON_error']}: {response.text}")
     logger.debug("Ответ API преобразован в JSON")
     return response
 
@@ -90,13 +86,10 @@ def check_response(response) -> list:
     """Проверка ответа API на наличие новых домашних работ."""
     error = STATUS_ERROR["API_not_correct"]
     if not isinstance(response, dict):
-        logger.error(error)
         raise BotTypeError(error)
     homework = response.get("homeworks")
     if homework is None or not isinstance(homework, list):
-        logger.error(error)
         raise BotKeyError(error)
-
     return homework
 
 
@@ -105,14 +98,9 @@ def parse_status(homework) -> str:
     homework_name = homework.get("homework_name")
     homework_status = homework.get("status")
     if not all((homework_name, homework_status)):
-        error_key = STATUS_ERROR["KeyError"]
-        logger.error(error_key)
-        raise BotKeyError(error_key)
+        raise BotKeyError(STATUS_ERROR["KeyError"])
     if homework_status not in HOMEWORK_STATUSES:
-        error_status = STATUS_ERROR["status"]
-        logger.error(error_status)
-        raise BotException(error_status)
-
+        raise BotException(STATUS_ERROR["status"])
     if homework_status != last_homework_status.get(homework_name):
         verdict = HOMEWORK_STATUSES[homework_status]
         last_homework_status[homework_name] = homework_status
